@@ -8,13 +8,13 @@ namespace Bingle.Server.Data
 {
     public class ServerContext
     {
-        public Encoding charset { get; set; }
-
-        public string FileRootPath { get; set; }
+        public string RootPath { get; set; }
 
         public string TempFileDirectory { get; set; }
 
         public string ImageFileDirectory { get; set; }
+
+        public int DataPort { get; set; }
 
         /// <summary>
         /// method of setting fileSavePath
@@ -22,12 +22,12 @@ namespace Bingle.Server.Data
         /// ".", "" - current executed path
         /// "image" - relative path
         /// </summary>
-        public ServerContext()
+        public ServerContext(string fileRootPath, int dataPort)
         {
-            charset = Encoding.UTF8;
-            FileRootPath = String.Empty;          /// relative path
+            RootPath = String.Empty;          /// relative path
             TempFileDirectory = "Temp";                /// relative path
             ImageFileDirectory = "Image";              /// relative path
+            DataPort = dataPort;
         }
     }
 }

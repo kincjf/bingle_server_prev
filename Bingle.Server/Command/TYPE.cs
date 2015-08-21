@@ -13,6 +13,7 @@ namespace Bingle.Server.Command
 {
     /// <summary>
     /// 수신을 위한 정보를 받음(fileSize등)
+    /// (차후 "PORT"(FTP Command)로 변경되어야 함.)
     /// </summary>
     public class TYPE : CommandBase<BingleSession, BingleProtocol>
     {
@@ -23,23 +24,36 @@ namespace Bingle.Server.Command
             Console.WriteLine("ExecuteCommand - TYPE");
             ConsoleLogger.GetProtocolLog(requestInfo);
 
-            session.FileContext.FileSize = BitConverter.ToInt64(requestInfo.Body, 0);
-            session.FileContext.TotalReadSize = 0;
+            //if (!session.Logged)
+            //    return;
 
-            if(BitConverter.IsLittleEndian)
+
+            session.Context.TempFileSize = BitConverter.ToInt64(requestInfo.Body, 0);
+
+            if (BitConverter.IsLittleEndian)
             {
-                session.FileContext.FileSize = IPAddress.NetworkToHostOrder(
-                    session.FileContext.FileSize);
+                session.Context.TempFileSize = IPAddress.NetworkToHostOrder(
+                    session.Context.TempFileSize);
             }
 
             BingleHeader header = new BingleHeader(
                 BodySTAT.SIZE, StatusData.NOT_FRAGMENTED, StatusData.LASTMSG, 0);
+            BingleProtocol<BingleHeader, BodySTAT> protocol;
+            
+            DataConnection dataConnection;
 
-            BingleProtocol<BingleHeader, BodySTAT> protocol
-                = new BingleProtocol<BingleHeader, BodySTAT>(
+            if (DataConnection.TryOpenDataConnection(session, session.AppServer.ServerContext.DataPort, out dataConnection))
+            {
+                session.DataConnection = dataConnection;
+                protocol = new BingleProtocol<BingleHeader, BodySTAT>(
                     CommandList.STAT, header, new BodySTAT(StatusData.DataConnectionAccepted_150));
+            }
+            else
+            {
+                protocol = new BingleProtocol<BingleHeader, BodySTAT>(
+                    CommandList.STAT, header, new BodySTAT(StatusData.PortInvalid_552));
+            }
 
-            /// STAT 전송(responseCode : 150)
             session.Send(protocol.GetBytes(), 0, protocol.GetSize());
         }
     }

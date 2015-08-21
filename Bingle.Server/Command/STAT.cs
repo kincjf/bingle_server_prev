@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -22,6 +23,9 @@ namespace Bingle.Server.Command
             Console.WriteLine("ExecuteCommand - STAT");
             ConsoleLogger.GetProtocolLog(requestInfo);      /// log
 
+            //if (!session.Logged)
+            //    return;
+
             int responseCode = BitConverter.ToInt32(requestInfo.Body, 0);
             
             if (BitConverter.IsLittleEndian)
@@ -32,18 +36,44 @@ namespace Bingle.Server.Command
             switch(responseCode)
             {
                 case StatusData.DataConnectionAccepted_150:
-                    /// Sphere 이미지 생성
+                    /// 나중에 (RETR)로 변경해야한다.
 
                     /// ServiceProvider.SendFile에서 ServerContext 경로로 변환해주기 때문에
                     /// virtualPath만 넣어주면 됨.
-                    // string imagePath = Path.Combine(
-                    //  session.AppServer.ServerContext.ImageFilePath, session.FileContext.FilePath + ".jpg");
+                    //string imagePath = Path.Combine(
+                    //    session.AppServer.ServerContext.ImageFileDirectory, session.Context.TempFileName + ".jpg");
                     string imagePath = Path.Combine(
-                        session.AppServer.ServerContext.ImageFileDirectory, "test360Image.jpg");
+                        session.AppServer.ServerContext.ImageFileDirectory, "test360Image.jpg");      // test
                     
-                /// 파일 전송(STOR)
-                    session.AppServer.ServiceProvider.SendFile(
-                        session.AppServer.ServerContext, imagePath, session);
+                    DataConnection dataConn = session.DataConnection;
+
+                    try
+                    {
+                        if (session.AppServer.ServiceProvider.SendFile(
+                                session.AppServer.ServerContext, imagePath, dataConn.GetStream(session.Context)))
+                        {
+                            Console.WriteLine("STAT - Success Send Data");
+                        }
+                        else
+                        {
+                            Console.WriteLine("STAT - DataConnection cannot open!({0})", StatusData.DataConnectionCannotOpen_420);
+                        }
+                    }
+                    catch (SocketException e)
+                    {
+                        session.Logger.Error(e);
+                        Console.WriteLine("STAT - DataConnection Error({0})", StatusData.DataConnectionError_426);
+                    }
+                    catch (Exception e)
+                    {
+                        session.Logger.Error(e);
+                        Console.WriteLine("STAT - InputFile Error({0}, {1})", StatusData.InputFileError_551, imagePath);
+                    }
+                    finally
+                    {
+                        session.CloseDataConnection();
+                    }
+
                     break;
                 case StatusData.TransferCompleted_226:
                     /// 모든 request 완료, 연결 종료

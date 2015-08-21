@@ -95,14 +95,16 @@
     <Compile Include="Command\STOR.cs" />
     <Compile Include="Command\TYPE.cs" />
     <Compile Include="ConsoleLogger.cs" />
+    <Compile Include="DataConnection.cs" />
+    <Compile Include="Data\BingleContext.cs" />
     <Compile Include="Data\BingleProtocol.cs" />
     <Compile Include="Data\Body\BodySTAT.cs" />
     <Compile Include="Data\Body\BodySTOR.cs" />
     <Compile Include="Data\Body\BodyTYPE.cs" />
-    <Compile Include="Data\FileContext.cs" />
     <Compile Include="Data\Header\BingleHeader.cs" />
     <Compile Include="Data\IBingleProtocol.cs" />
     <Compile Include="Data\ServerContext.cs" />
+    <Compile Include="Data\StoreOption.cs" />
     <Compile Include="Filter\FileReceiveFilter.cs" />
     <Compile Include="MetaData\CommandList.cs" />
     <Compile Include="MetaData\StatusData.cs" />

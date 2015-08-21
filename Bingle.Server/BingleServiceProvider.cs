@@ -23,6 +23,11 @@ namespace Bingle.Server
     {
         protected BingleServer AppServer { get; private set; }
 
+        public virtual bool StoreFile(ServerContext context, string filename, Stream stream, long storeLength)
+        {
+            return StoreFile(context, filename, stream, new StoreOption(storeLength));
+        }
+
         /// <summary>
         /// 현재는 session에 저장되어 있는 단일 stream으로 하기 때문에 
         /// 차후 추가 connection을 열어서 하는 방법으로 수정해야함.
@@ -31,45 +36,38 @@ namespace Bingle.Server
         /// <param name="fileContext">session.FileContext</param>
         /// <param name="bingleProtocol"></param>
         /// <returns></returns>
-        public bool StoreFile(ServerContext serverContext, string fileName,
-            FileContext fileContext, BingleProtocol bingleProtocol)
+        public bool StoreFile(ServerContext context, string fileName, Stream stream, StoreOption option)
         {
             int bufLen = 1024 * 4;
+            byte[] buffer = new byte[bufLen];
+            int read = 0;
+            long totalRead = 0;
+
+            FileStream fs = null;
 
             try
             {
-                if (fileContext.FileDataStream == null)
+                string filePath = GetStoragePath(context, fileName);
+
+                Console.WriteLine("Store File Path - {0}", filePath);       // for debug
+
+                if (File.Exists(filePath))
                 {
-                    // (test), serverContext와 각종 데이터와 조합된 이름을 사용해야함
-                    //string filePath = fileName;
-                    string filePath = GetStoragePath(serverContext, fileName);
-
-                    Console.WriteLine("Store File Path - {0}", filePath);
-
-                    if (File.Exists(filePath))
-                    {
-                        File.Delete(filePath);
-                    }
-
-                    fileContext.FileDataStream = new FileStream(
-                        filePath, FileMode.CreateNew, FileAccess.Write, FileShare.Write, bufLen);
+                    File.Delete(filePath);
                 }
 
-                fileContext.FileDataStream.Write(bingleProtocol.Body, 0, bingleProtocol.Header.BodyLength);
-                fileContext.TotalReadSize += bingleProtocol.Header.BodyLength;
+                fs = new FileStream(
+                    filePath, FileMode.CreateNew, FileAccess.Write, FileShare.Write, bufLen);
 
-                if (fileContext.TotalReadSize >= fileContext.FileSize)
+                while (totalRead < option.TotalRead)
                 {
-                    /// 임시 - 또 다른 요청이 있을 수 있기 때문에 초기화 해야함.
-                    /// connection을 여는 방법을 써야 할 것 같다.
-                    if (fileContext.FileDataStream != null)
+                    if((read = stream.Read(buffer, 0, bufLen)) > 0)
                     {
-                        fileContext.FileDataStream.Close();
-                        fileContext.FileDataStream.Dispose();
-                        fileContext.FileDataStream = null;
+                        fs.Write(buffer, 0, read);
+                        totalRead += read;
+                        Console.WriteLine("BingleServiceProvider - TotalRead : {0}", totalRead);
                     }
                 }
-
 
                 return true;
             }
@@ -78,6 +76,15 @@ namespace Bingle.Server
                 AppServer.Logger.Error(e);
                 Console.WriteLine("BingleServiceProvider - Store file Error");
                 return false;
+            }
+            finally
+            {
+                if (fs != null)
+                {
+                    fs.Close();
+                    fs.Dispose();
+                    fs = null;
+                }
             }
         }
 
@@ -89,20 +96,14 @@ namespace Bingle.Server
         /// <param name="fileContext">session.FileContext</param>
         /// <param name="bingleSession"></param>
         /// <returns></returns>
-        public bool SendFile(ServerContext serverContext, string fileName,
-            BingleSession session)
+        public virtual bool SendFile(ServerContext serverContext, string fileName,
+            Stream stream)
         {
             int bufLen = 1024 * 4;
             byte[] buffer = new byte[bufLen];
             int read = 0;
 
-            byte fragmented = StatusData.FRAGMENTED;
-            byte lastMsg = StatusData.NOT_LASTMSG;
-            int sequence = 0;
-
             FileStream fs = null;
-            BingleHeader header = null;
-            BingleProtocol<BingleHeader, BodySTOR> protocol = null;
 
             try
             {
@@ -117,41 +118,15 @@ namespace Bingle.Server
 
                 while ((read = fs.Read(buffer, 0, bufLen)) > 0)
                 {
-                    if (read < bufLen)
-                    {
-                        if (sequence > 0)
-                        {
-                            fragmented = StatusData.FRAGMENTED;
-                        }
-                        else
-                        {
-                            fragmented = StatusData.NOT_FRAGMENTED;
-                        }
-
-                        lastMsg = StatusData.LASTMSG;
-                    }
-
-                    header = new BingleHeader(read, fragmented, lastMsg, sequence);
-                    protocol = new BingleProtocol<BingleHeader, BodySTOR>(
-                        CommandList.STOR, header, new BodySTOR(buffer.CloneRange(0, read)));
-
-                    session.Send(protocol.GetBytes(), 0, protocol.GetSize());
-
-                    ++sequence;
+                    stream.Write(buffer, 0, read);
                 }
 
                 return true;
             }
-            catch (IOException e)
+            catch (Exception e)
             {
                 AppServer.Logger.Error(e);
                 Console.WriteLine("BingleServiceProvider - Failed to Send file");
-                return false;
-            }
-            catch (SocketException e)
-            {
-                AppServer.Logger.Error(e);
-                Console.WriteLine("BingleServiceProvider - Data Connection Error");
                 return false;
             }
             finally
@@ -202,7 +177,7 @@ namespace Bingle.Server
         protected virtual string GetStoragePathInternal(ServerContext context, string virtualPath)
         {
             virtualPath = virtualPath.TrimStart(Path.DirectorySeparatorChar);
-            return Path.Combine(context.FileRootPath, virtualPath);
+            return Path.Combine(context.RootPath, virtualPath);
         }
 
         public string GetRandomName()

@@ -28,21 +28,29 @@ namespace Bingle.Server
         
         protected override bool Setup(IRootConfig rootConfig, IServerConfig config)
         {
-            ServerContext = new ServerContext();
+            string fileRootPathNode = config.Options.GetValue("fileRootPath", string.Empty);
+
+            string dataPortNode = config.Options.GetValue("dataPort");
+
+            if (string.IsNullOrEmpty(dataPortNode))
+            {
+                Logger.Error("Parameter 'dataPort' is required!");
+                return false;
+            }
+
+            if (fileRootPathNode.StartsWith("."))
+            {
+                fileRootPathNode = fileRootPathNode.TrimStart('.');
+            }
+            
+            int dataPort = Convert.ToInt32(dataPortNode);
+
+            ServerContext = new ServerContext(fileRootPathNode, dataPort);
             ServiceProvider = new BingleServiceProvider();
 
-            ServerContext.FileRootPath = config.Options.GetValue("fileRootPath");
-
-            if (string.IsNullOrEmpty(ServerContext.FileRootPath))
-            {
-                Console.WriteLine("File Save Path - \"{0}\"", ServerContext.FileRootPath);
-                Logger.Info("File Save Path - \"" + ServerContext.FileRootPath + "\"");
-            }
-            else if (ServerContext.FileRootPath.StartsWith("."))
-            {
-                ServerContext.FileRootPath = ServerContext.FileRootPath.TrimStart('.');
-            }
-
+            Console.WriteLine("File Save Path - \"{0}\"", ServerContext.RootPath);
+            Logger.Info("File Save Path - \"" + ServerContext.RootPath + "\"");
+            
             string tempDirectory = ServiceProvider.GetStoragePath(
                 ServerContext, ServerContext.TempFileDirectory);
             string imageDirectory = ServiceProvider.GetStoragePath(

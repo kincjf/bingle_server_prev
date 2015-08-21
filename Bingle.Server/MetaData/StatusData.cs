@@ -15,7 +15,15 @@ namespace Bingle.Server.MetaData
         public const byte LASTMSG = 0x01;
 
         public const int DataConnectionAccepted_150 = 150;
+
         public const int RequestActionCompleted_200 = 200;
         public const int TransferCompleted_226 = 226;
+
+        public const int DataConnectionCannotOpen_420 = 420;
+        public const int DataConnectionError_426 = 426;
+
+        public const int InputFileError_551 = 551;
+        public const int OutputFileError_551 = 551;
+        public const int PortInvalid_552 = 552;
     }
 }

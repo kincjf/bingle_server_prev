@@ -15,6 +15,7 @@ namespace Bingle.Server.Filter
 {
     /// <summary>
     /// Big Endian으로 통신
+    /// 차후 ftp같이 Command Connection은 StringRequestInfo만 사용하자
     /// </summary>
     class FileReceiveFilter : FixedHeaderReceiveFilter<BingleProtocol>
     {

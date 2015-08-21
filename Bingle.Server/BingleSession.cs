@@ -13,8 +13,12 @@ namespace Bingle.Server
     {
         public string userId { internal set; get; }
 
-        public FileContext FileContext { get; private set; }
-        
+        public bool Logged { get; internal set; }
+
+        public BingleContext Context { get; private set; }
+
+        internal DataConnection DataConnection { get; set; }
+
         public new BingleServer AppServer
         {
             get { return (BingleServer)base.AppServer; }
@@ -22,12 +26,30 @@ namespace Bingle.Server
 
         public override void Close()
         {
+            if (DataConnection != null)
+            {
+                DataConnection.Close();
+                DataConnection = null;
+            }
+
             base.Close();
+        }
+
+        internal void CloseDataConnection()
+        {
+            var dataConnection = DataConnection;
+
+            if (dataConnection == null)
+                return;
+
+            dataConnection.Close();
+
+            DataConnection = null;
         }
 
         protected override void OnInit()
         {
-            FileContext = new FileContext();
+            Context = new BingleContext(AppServer.ServerContext.RootPath, string.Empty);
             base.OnInit();
         }
 
