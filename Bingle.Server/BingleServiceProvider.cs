@@ -17,7 +17,11 @@ using System.Net.Sockets;
 namespace Bingle.Server
 {
     /// <summary>
-    /// 파일 저장 방법을 감추기 위해서 abstract class, protected로 선언할 수 있음
+    /// 데이터(Binary) 송/수신, 파일 경로 관리 
+    /// - 파일 저장 방법을 감추기 위해서 abstract class, protected로 선언할 수 있음
+    /// - 현재는 Server Root Path 기준(ServerContext)이지만,
+    ///   향후에는 계정별 파일 관리를 위하여 사용자별(BingleContext)로 변경 되어야 한다.
+    /// - 속도가 느리기 때문에 파일 송/수신을 직접 구현하지말고, 라이브러리를 가져다 쓰기.
     /// </summary>
     public class BingleServiceProvider
     {
@@ -38,7 +42,7 @@ namespace Bingle.Server
         /// <returns></returns>
         public bool StoreFile(ServerContext context, string fileName, Stream stream, StoreOption option)
         {
-            int bufLen = 1024 * 4;
+            int bufLen = 1024 * 128;
             byte[] buffer = new byte[bufLen];
             int read = 0;
             long totalRead = 0;
@@ -99,7 +103,7 @@ namespace Bingle.Server
         public virtual bool SendFile(ServerContext serverContext, string fileName,
             Stream stream)
         {
-            int bufLen = 1024 * 4;
+            int bufLen = 1024 * 128;
             byte[] buffer = new byte[bufLen];
             int read = 0;
 

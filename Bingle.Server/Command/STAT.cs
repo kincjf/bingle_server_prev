@@ -40,10 +40,10 @@ namespace Bingle.Server.Command
 
                     /// ServiceProvider.SendFile에서 ServerContext 경로로 변환해주기 때문에
                     /// virtualPath만 넣어주면 됨.
-                    //string imagePath = Path.Combine(
-                    //    session.AppServer.ServerContext.ImageFileDirectory, session.Context.TempFileName + ".jpg");
                     string imagePath = Path.Combine(
-                        session.AppServer.ServerContext.ImageFileDirectory, "test360Image.jpg");      // test
+                        session.AppServer.ServerContext.ImageFileDirectory, session.Context.TempFileName + ".jpg");
+                    //string imagePath = Path.Combine(
+                    //    session.AppServer.ServerContext.ImageFileDirectory, "test360Image.jpg");      // test
                     
                     DataConnection dataConn = session.DataConnection;
 

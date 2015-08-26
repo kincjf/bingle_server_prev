@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace Bingle.Server.MetaData
 {
+    /// <summary>
+    /// Header정보, 통신 결과에 대한 정보
+    /// </summary>
     public class StatusData
     {
         public const byte NOT_FRAGMENTED = 0x00;

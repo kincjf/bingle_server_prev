@@ -13,6 +13,9 @@ using System.Threading.Tasks;
 
 namespace Bingle.Server
 {
+    /// <summary>
+    /// Binary 전송을 위한 Connection, Stream 관리
+    /// </summary>
     class DataConnection
     {
         private string _address = string.Empty;

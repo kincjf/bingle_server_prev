@@ -16,13 +16,15 @@ using Bingle.Server.Data.Body;
 using Bingle.Server.MetaData;
 using System.Security.Principal;
 using System.Security.AccessControl;
+using Bingle.Server.Data.APSConfig;
+using Bingle.Common;
+using System.Diagnostics;
 
 namespace Bingle.Server.Command
 {
     /// <summary>
-    /// 패킷(파일)을 저장함
-    /// 차후 command 패턴은 그대로 유지하면서 따로 data 전송을 위한 connection을 구현해서
-    /// 전송 속도/효율을 높여야 될 것 같음.
+    /// 패킷(파일)을 저장하고 Spherical image로 변환함.
+    /// - Sphere 변환 도중 연결이 끊겼을 경우에 대한 처리가 필요함.
     /// </summary>
     public class STOR : CommandBase<BingleSession, BingleProtocol>
     {
@@ -40,7 +42,7 @@ namespace Bingle.Server.Command
             string storeFileName = session.AppServer.ServiceProvider.GetRandomName();
 
             string imageFileName = storeFileName + ".jpg";
-            
+
             string storeFilePath = Path.Combine(session.AppServer.ServerContext.TempFileDirectory, storeFileName);
             string fullZipFilePath = storeFilePath + ".zip";
             string fullImageFilePath = Path.Combine(
@@ -99,12 +101,58 @@ namespace Bingle.Server.Command
                         // STAT 전송(responseCode : 200)
                         session.Send(protocolSTAT.GetBytes(), 0, protocolSTAT.GetSize());
 
+                        // Autopano Server config xml파일 생성
+                        APSConfig config = new APSConfig(storeFilePath, session.AppServer.ServerContext.ImageFileDirectory);
+                        config.application.log = 2;     // for Debug
+
+                        string fullXmlPath = Path.Combine(storeFilePath, storeFileName + ".xml");
+                        XmlSerializerUtil.Serialize(fullXmlPath, config);
+
                         // Sphere 변환
 
-                        //long fileSize = session.AppServer.ServiceProvider.GetFileSize(storeFilePath);
-                        string testFullImageFilePath = Path.Combine(
-                session.AppServer.ServerContext.ImageFileDirectory, "test360Image.jpg");     // for test
-                        long fileSize = session.AppServer.ServiceProvider.GetFileSize(testFullImageFilePath);       // for test
+                        ProcessStartInfo procInfo = new ProcessStartInfo();
+
+                        procInfo.WindowStyle = ProcessWindowStyle.Normal;
+                        procInfo.UseShellExecute = false;
+                        procInfo.RedirectStandardInput = true;
+                        procInfo.RedirectStandardOutput = true;
+                        procInfo.RedirectStandardError = true;
+                        procInfo.FileName = "../../AutopanoServer/AutopanoServer";
+                        procInfo.Arguments = "xml=" + fullXmlPath;
+
+                        // change as Windows path
+                        if (Path.DirectorySeparatorChar == '\\')
+                        {
+                            procInfo.FileName = Bingle.Common.StringUtil.ReverseSlash(procInfo.FileName, '/');
+                            procInfo.Arguments = Bingle.Common.StringUtil.ReverseSlash(procInfo.Arguments, '/');
+                        }
+
+                        using (Process process = Process.Start(procInfo))
+                        {
+                            //Wait for the process to end.
+                            process.WaitForExit();
+
+                            if (process.HasExited)
+                            {
+                                if (process.ExitCode == 0)       // success
+                                {
+                                    Console.WriteLine("STOR - Success transform image using AutopanoServer");
+                                    Console.WriteLine(process.StandardOutput.ReadToEnd());
+                                }
+                                else       // some error
+                                {
+                                    Console.WriteLine("STOR - Error in transform image using AutopanoServer");
+                                    session.Logger.Error(process.StandardError.ReadToEnd());
+
+                                    throw new Exception();
+                                }
+                            }
+                        }
+
+                        long fileSize = session.AppServer.ServiceProvider.GetFileSize(fullImageFilePath);
+                        //string testFullImageFilePath = Path.Combine(
+                        //  session.AppServer.ServerContext.ImageFileDirectory, "test360Image.jpg");     // for test
+                        //long fileSize = session.AppServer.ServiceProvider.GetFileSize(testFullImageFilePath);       // for test
 
                         header = new BingleHeader(
                             BodyTYPE.SIZE, StatusData.NOT_FRAGMENTED, StatusData.LASTMSG, 0);
@@ -123,7 +171,7 @@ namespace Bingle.Server.Command
                     protocolSTAT = new BingleProtocol<BingleHeader, BodySTAT>(
                         CommandList.STAT, header, new BodySTAT(StatusData.DataConnectionError_426));
 
-                    session.Send(protocolSTAT.GetBytes(), 0, protocolSTAT.GetSize());                  
+                    session.Send(protocolSTAT.GetBytes(), 0, protocolSTAT.GetSize());
                     session.CloseDataConnection();
 
                     Console.WriteLine("STOR - Data Connection Error");
@@ -147,7 +195,7 @@ namespace Bingle.Server.Command
                 header = new BingleHeader(BodySTAT.SIZE, StatusData.NOT_FRAGMENTED, StatusData.LASTMSG, 0);
                 protocolSTAT = new BingleProtocol<BingleHeader, BodySTAT>(
                     CommandList.STAT, header, new BodySTAT(StatusData.DataConnectionCannotOpen_420));
-                
+
                 session.Send(protocolSTAT.GetBytes(), 0, protocolSTAT.GetSize());
                 session.CloseDataConnection();
 
