@@ -106,8 +106,12 @@ namespace Bingle.Server.Data.APSConfig
         [XmlElement("detection_templateMode")]
         public ushort detectionTemplateMode = 0;
 
+        /// <summary>
+        /// false: multiple panoramas will be created if not all the images are linked together (default)
+        /// true: Force every image to be in one panorama
+        /// </summary>
         [XmlElement("isolate_allinone")]
-        public bool isolateAllinone = false;
+        public bool isolateAllinone = true;
 
         /// <summary>
         /// not provided or 0: no log
@@ -187,12 +191,17 @@ namespace Bingle.Server.Data.APSConfig
         public bool autoColor = true;
 
         /// <summary>
+        /// -1 : automatic
         /// 0: spherical
         /// </summary>
         [XmlElement("projection")]
         public ushort projection = 0;
 
+        /// <summary>
+        /// fit Image size as projection type
+        /// equirectangular - w:h = 2:1 
+        /// </summary>
         [XmlElement("geo_fitMode")]
-        public ushort geoFitMode = 1;
+        public ushort geoFitMode = 2;
     }
 }

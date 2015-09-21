@@ -19,12 +19,15 @@ using System.Security.AccessControl;
 using Bingle.Server.Data.APSConfig;
 using Bingle.Common;
 using System.Diagnostics;
+using Bingle.Server.CustomProcess;
 
 namespace Bingle.Server.Command
 {
     /// <summary>
     /// 패킷(파일)을 저장하고 Spherical image로 변환함.
     /// - Sphere 변환 도중 연결이 끊겼을 경우에 대한 처리가 필요함.
+    /// - 동작에 대한 Error 처리는 해당 Class에서 마무리하자.
+    /// - Error처리에 신경쓰다보면 너무 if-else가 많아지고 불 필요한 Exception이 생긴다.
     /// </summary>
     public class STOR : CommandBase<BingleSession, BingleProtocol>
     {
@@ -43,8 +46,8 @@ namespace Bingle.Server.Command
 
             string imageFileName = storeFileName + ".jpg";
 
-            string storeFilePath = Path.Combine(session.AppServer.ServerContext.TempFileDirectory, storeFileName);
-            string fullZipFilePath = storeFilePath + ".zip";
+            string storeFolderPath = Path.Combine(session.AppServer.ServerContext.TempFileDirectory, storeFileName);
+            string fullZipFilePath = storeFolderPath + ".zip";
             string fullImageFilePath = Path.Combine(
                 session.AppServer.ServerContext.ImageFileDirectory, imageFileName);
 
@@ -69,7 +72,7 @@ namespace Bingle.Server.Command
 
                         // 압축 풀기
                         string uncompressDir = session.AppServer.ServiceProvider.GetStoragePath(
-                            session.AppServer.ServerContext, storeFilePath);
+                            session.AppServer.ServerContext, storeFolderPath);
                         DirectoryInfo dir = new DirectoryInfo(uncompressDir);
 
                         if (dir.Exists == true)
@@ -101,52 +104,34 @@ namespace Bingle.Server.Command
                         // STAT 전송(responseCode : 200)
                         session.Send(protocolSTAT.GetBytes(), 0, protocolSTAT.GetSize());
 
-                        // Autopano Server config xml파일 생성
-                        APSConfig config = new APSConfig(storeFilePath, session.AppServer.ServerContext.ImageFileDirectory);
-                        config.application.log = 2;     // for Debug
+                        // Autopano Server 설정
+                        string fullXmlPath = Autopano.SetAPS(storeFolderPath, storeFileName, session.AppServer.ServerContext.ImageFileDirectory);
 
-                        string fullXmlPath = Path.Combine(storeFilePath, storeFileName + ".xml");
-                        XmlSerializerUtil.Serialize(fullXmlPath, config);
-
-                        // Sphere 변환
-
-                        ProcessStartInfo procInfo = new ProcessStartInfo();
-
-                        procInfo.WindowStyle = ProcessWindowStyle.Normal;
-                        procInfo.UseShellExecute = false;
-                        procInfo.RedirectStandardInput = true;
-                        procInfo.RedirectStandardOutput = true;
-                        procInfo.RedirectStandardError = true;
-                        procInfo.FileName = "../../AutopanoServer/AutopanoServer";
-                        procInfo.Arguments = "xml=" + fullXmlPath;
-
-                        // change as Windows path
-                        if (Path.DirectorySeparatorChar == '\\')
+                        // session connect 여부와 변환 결과 여부를 동시에 확인하기 위해서는
+                        // interprocess-communication을 활용해야 할 것 같다.
+                        // @link http://stackoverflow.com/questions/4123923/synchronizing-2-processes-using-interprocess-synchronizations-objects-mutex-or
+                        // Sphere 변환                      
+                        var status = Autopano.Run(fullXmlPath, session);
+                        
+                        // nadir cap capsulation
+                        if (status == 0)
                         {
-                            procInfo.FileName = Bingle.Common.StringUtil.ReverseSlash(procInfo.FileName, '/');
-                            procInfo.Arguments = Bingle.Common.StringUtil.ReverseSlash(procInfo.Arguments, '/');
-                        }
-
-                        using (Process process = Process.Start(procInfo))
-                        {
-                            //Wait for the process to end.
-                            process.WaitForExit();
-
-                            if (process.HasExited)
+                            status = NadirCap.Run(fullImageFilePath, session);
+                            
+                            if (status == 0)
                             {
-                                if (process.ExitCode == 0)       // success
-                                {
-                                    Console.WriteLine("STOR - Success transform image using AutopanoServer");
-                                    Console.WriteLine(process.StandardOutput.ReadToEnd());
-                                }
-                                else       // some error
-                                {
-                                    Console.WriteLine("STOR - Error in transform image using AutopanoServer");
-                                    session.Logger.Error(process.StandardError.ReadToEnd());
-
-                                    throw new Exception();
-                                }
+                                Console.WriteLine("STOR - Trandformation Success!");
                             }
+                            else
+                            {
+                                Console.Error.WriteLine("NadirCap Error");
+                                throw new Exception("NadirCap Error");
+                            }
+                        }
+                        else
+                        {
+                            Console.Error.WriteLine("STOR - Fail to transformation image");
+                            throw new Exception("Autopano Error");
                         }
 
                         long fileSize = session.AppServer.ServiceProvider.GetFileSize(fullImageFilePath);
@@ -172,9 +157,9 @@ namespace Bingle.Server.Command
                         CommandList.STAT, header, new BodySTAT(StatusData.DataConnectionError_426));
 
                     session.Send(protocolSTAT.GetBytes(), 0, protocolSTAT.GetSize());
-                    session.CloseDataConnection();
+                    session.Close();
 
-                    Console.WriteLine("STOR - Data Connection Error");
+                    Console.Error.WriteLine("STOR - Data Connection Error");
                 }
                 catch (Exception e)
                 {
@@ -185,9 +170,9 @@ namespace Bingle.Server.Command
                         CommandList.STAT, header, new BodySTAT(StatusData.OutputFileError_551));
 
                     session.Send(protocolSTAT.GetBytes(), 0, protocolSTAT.GetSize());
-                    session.CloseDataConnection();
+                    session.Close();
 
-                    Console.WriteLine("STOR - Output File Error");
+                    Console.Error.WriteLine("STOR - Output File Error");
                 }
             }
             else
@@ -197,9 +182,9 @@ namespace Bingle.Server.Command
                     CommandList.STAT, header, new BodySTAT(StatusData.DataConnectionCannotOpen_420));
 
                 session.Send(protocolSTAT.GetBytes(), 0, protocolSTAT.GetSize());
-                session.CloseDataConnection();
+                session.Close();
 
-                Console.WriteLine("STOR - DataConnection cannot open");
+                Console.Error.WriteLine("STOR - DataConnection cannot open");
             }
         }
     }

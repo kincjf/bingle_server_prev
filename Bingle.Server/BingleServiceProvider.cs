@@ -22,6 +22,7 @@ namespace Bingle.Server
     /// - 현재는 Server Root Path 기준(ServerContext)이지만,
     ///   향후에는 계정별 파일 관리를 위하여 사용자별(BingleContext)로 변경 되어야 한다.
     /// - 속도가 느리기 때문에 파일 송/수신을 직접 구현하지말고, 라이브러리를 가져다 쓰기.
+    /// - Connection 연결, 데이터 수신 여부 처리가 어렵다. 가져다 쓰자! 
     /// </summary>
     public class BingleServiceProvider
     {
@@ -53,7 +54,7 @@ namespace Bingle.Server
             {
                 string filePath = GetStoragePath(context, fileName);
 
-                Console.WriteLine("Store File Path - {0}", filePath);       // for debug
+                Console.WriteLine("BingleServerProvider - Store File Path : {0}", filePath);       // for debug
 
                 if (File.Exists(filePath))
                 {
@@ -69,9 +70,11 @@ namespace Bingle.Server
                     {
                         fs.Write(buffer, 0, read);
                         totalRead += read;
-                        Console.WriteLine("BingleServiceProvider - TotalRead : {0}", totalRead);
+                        Console.WriteLine("totalRead - {0}", totalRead);
                     }
                 }
+
+                Console.WriteLine("BingleServiceProvider - StoreFile Complete : TotalRead : {0}", totalRead);
 
                 return true;
             }
@@ -116,7 +119,7 @@ namespace Bingle.Server
                 // (test), serverContext와 각종 데이터와 조합된 이름을 사용해야함
                 //string filePath = fileContext.SendFilePath;
 
-                Console.WriteLine("Send File Path - {0}", filePath);
+                Console.WriteLine("BingleServiceProvider - Send File Path : {0}", filePath);
 
                 fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufLen);
 
@@ -124,6 +127,8 @@ namespace Bingle.Server
                 {
                     stream.Write(buffer, 0, read);
                 }
+
+                Console.WriteLine("BingleServiceProvider - Send File Complete : {0}", filePath);
 
                 return true;
             }
