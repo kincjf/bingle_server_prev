@@ -22,7 +22,9 @@ namespace Bingle.Server
     /// - 현재는 Server Root Path 기준(ServerContext)이지만,
     ///   향후에는 계정별 파일 관리를 위하여 사용자별(BingleContext)로 변경 되어야 한다.
     /// - 속도가 느리기 때문에 파일 송/수신을 직접 구현하지말고, 라이브러리를 가져다 쓰기.
-    /// - Connection 연결, 데이터 수신 여부 처리가 어렵다. 가져다 쓰자! 
+    /// - Connection 연결, 데이터 수신 여부 처리가 어렵다. 가져다 쓰자!
+    /// - App 화면이 중간에 꺼지면 데이터가 오다가 안온다.. 항상 켜놓자
+    ///   (백그라운드로 해놨다고 하지 않았나? 뭐지...)
     /// </summary>
     public class BingleServiceProvider
     {
@@ -48,6 +50,8 @@ namespace Bingle.Server
             int read = 0;
             long totalRead = 0;
 
+            int[] percent = Enumerable.Range(1, 100).ToArray();
+
             FileStream fs = null;
 
             try
@@ -66,15 +70,22 @@ namespace Bingle.Server
 
                 while (totalRead < option.TotalRead)
                 {
+                    int progress = 0;
+
                     if((read = stream.Read(buffer, 0, bufLen)) > 0)
                     {
                         fs.Write(buffer, 0, read);
                         totalRead += read;
-                        Console.WriteLine("totalRead - {0}", totalRead);
+                        
+                        if ((int)((totalRead / option.TotalRead) * 100) > percent[progress])
+                        {
+                            progress += 1;
+                            Console.WriteLine("totalRead - {0}%", progress);
+                        }
                     }
                 }
 
-                Console.WriteLine("BingleServiceProvider - StoreFile Complete : TotalRead : {0}", totalRead);
+                Console.WriteLine("BingleServiceProvider - StoreFile Complete : TotalRead : {0}MB", (totalRead / 1024f / 1024f));
 
                 return true;
             }

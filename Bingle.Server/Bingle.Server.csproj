@@ -111,6 +111,8 @@
     <Compile Include="MetaData\CommandList.cs" />
     <Compile Include="MetaData\StatusData.cs" />
     <Compile Include="CustomProcess\NadirCap.cs" />
+    <None Include="Test\NadirCapTest.cs" />
+    <None Include="CustomProcess\README.md" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ServerResource.Designer.cs" />

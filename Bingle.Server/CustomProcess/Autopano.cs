@@ -14,12 +14,12 @@ namespace Bingle.Server.CustomProcess
     {
         /// <summary>
         /// Run Autopano Server
-        /// - Session 참조는 Connected 확인 목적으로만
+        /// - 가정 : Session은 무조건 연결되어있음
         /// - Error 발생시 처리는 Command로 넘기기(너무 복잡해지고 필요없는 일을 한다)
         /// </summary>
         /// <param name="fullXmlPath"></param>
         /// <returns>0 - success, 1 - fail</returns>
-        public static int Run(string fullXmlPath, BingleSession session)
+        public static int Run(string fullXmlPath)
         {            
             if (!File.Exists(fullXmlPath)) {
                 return 1;
@@ -53,18 +53,7 @@ namespace Bingle.Server.CustomProcess
                 if (started)
                 {
                     process.BeginOutputReadLine();
-
-                    while (!process.HasExited)
-                    {
-                        if (!session.Connected)
-                        {
-                            process.Kill();
-                            return 1;
-                        }
-
-                        //Wait process for 1 sec to end.
-                        process.WaitForExit(1000);
-                    }
+                    process.WaitForExit();
 
                     if (process.ExitCode == 0)       // success
                     {
@@ -75,7 +64,7 @@ namespace Bingle.Server.CustomProcess
                     else       // some error
                     {
                         Console.Error.WriteLine("Autopano - Process Exit Error : {0}", process.ExitCode);
-                        session.Logger.Error(process.StandardError.ReadToEnd());
+                        Console.Error.WriteLine(process.StandardError.ReadToEnd());
                         return 1;
                     }
                 }

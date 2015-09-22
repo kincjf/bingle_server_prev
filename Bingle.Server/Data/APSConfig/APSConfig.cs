@@ -85,7 +85,8 @@ namespace Bingle.Server.Data.APSConfig
     //[XmlElement("activation")]
     public class APSActivation
     {
-        public string code;
+        public string code = "W54T-2DNI-YVGY-CB8E-HSZK-DJGZ-JSTA";
+        public bool userInfo = true;
     }
 
     //[XmlElement("group")]
@@ -184,8 +185,11 @@ namespace Bingle.Server.Data.APSConfig
         [XmlElement("render_multiband_level")]
         public short renderBlend = -2;
 
+        /// <summary>
+        /// 0: no correction (default), 1: laguerre, 2: hdri
+        /// </summary>
         [XmlElement("colorEqMode")]
-        public ushort colorEqMode = 0;
+        public ushort colorEqMode = 2;
 
         [XmlElement("auto_Color")]
         public bool autoColor = true;

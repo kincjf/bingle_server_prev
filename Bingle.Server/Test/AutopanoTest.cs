@@ -10,10 +10,22 @@ using System.Threading.Tasks;
 
 namespace Bingle.Server.Test
 {
+    class BingleSession
+    {
+        public bool session = true;
+        public void Logger = (string msg) =>
+        {
+            Console.WriteLine(msg);
+        };
+    }
+
     public class AutopanoTest
     {
         static void Main(string[] args)
         {
+            // Mock instance
+            BingleSession session = new BingleSession();
+
             // ServiceProvider.StoreFile에서 ServerContext 경로로 변환해주기 때문에
             // virtualPath만 넣어주면 됨.
             string storeFileName = "201509211855068";
@@ -37,11 +49,11 @@ namespace Bingle.Server.Test
             string fullXmlPath = Autopano.SetAPS(storeFolderPath, storeFileName, ServerContext.ImageFileDirectory);
 
             // Sphere 변환                      
-            using (Process process = Autopano.Run(fullXmlPath, session))
+            using (Process process = Autopano.Run(fullXmlPath))
             {
                 while (!process.HasExited)
                 {
-                    Console.WriteLine("AutopanoTest - Wait for Converting");
+                    Console.WriteLine("Autopano - Wait for Converting");
 
                     //Wait process for 1 sec to end.
                     process.WaitForExit(1000);
@@ -50,21 +62,21 @@ namespace Bingle.Server.Test
 
                 if (process.ExitCode == 0)       // success
                 {
-                    Console.WriteLine("AutopanoTest - Success transform image using AutopanoServer");
+                    Console.WriteLine("Autopano - Success transform image");
                 }
                 else       // some error
                 {
-                    Console.Error.WriteLine("AutopanoTest - Error in transform image using AutopanoServer");
+                    Console.Error.WriteLine("Autopano - Error in transform image");
                     return;
                 }
             }
 
             // nadir cap capsulation
-            using (Process process = NadirCap.Run(fullImageFilePath, session))
+            using (Process process = NadirCap.Run(fullImageFilePath))
             {
                 while (!process.HasExited)
                 {
-                    Console.WriteLine("AutopanoTest - Wait for Converting");
+                    Console.WriteLine("Nadircap - Wait for Converting");
 
                     //Wait process for 1 sec to end.
                     process.WaitForExit(1000);
@@ -73,11 +85,11 @@ namespace Bingle.Server.Test
 
                 if (process.ExitCode == 0)       // success
                 {
-                    Console.WriteLine("AutopanoTest - Success transform image using AutopanoServer");
+                    Console.WriteLine("Nadircap - Success transform ");
                 }
                 else       // some error
                 {
-                    Console.Error.WriteLine("AutopanoTest - Error in transform image using AutopanoServer");
+                    Console.Error.WriteLine("Nadircap - Error in transform");
                     return;
                 }
             }

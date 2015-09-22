@@ -111,12 +111,12 @@ namespace Bingle.Server.Command
                         // interprocess-communication을 활용해야 할 것 같다.
                         // @link http://stackoverflow.com/questions/4123923/synchronizing-2-processes-using-interprocess-synchronizations-objects-mutex-or
                         // Sphere 변환                      
-                        var status = Autopano.Run(fullXmlPath, session);
+                        var status = Autopano.Run(fullXmlPath);
                         
                         // nadir cap capsulation
                         if (status == 0)
                         {
-                            status = NadirCap.Run(fullImageFilePath, session);
+                            status = NadirCap.Run(fullImageFilePath);
                             
                             if (status == 0)
                             {
