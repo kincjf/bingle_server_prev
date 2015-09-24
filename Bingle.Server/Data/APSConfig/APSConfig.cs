@@ -189,7 +189,7 @@ namespace Bingle.Server.Data.APSConfig
         /// 0: no correction (default), 1: laguerre, 2: hdri
         /// </summary>
         [XmlElement("colorEqMode")]
-        public ushort colorEqMode = 2;
+        public ushort colorEqMode = 0;
 
         [XmlElement("auto_Color")]
         public bool autoColor = true;
